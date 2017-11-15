@@ -31,9 +31,10 @@ class MLP(chainer.Chain):
 
 
 def location(depth=0):
-    frame = inspect.stack()[depth+1]
+    frame = inspect.stack()[depth + 1]
     return (frame[1], frame[2])
-     
+
+
 @chainer.testing.parameterize(
     {'gpu': True},
     {'gpu': False},

@@ -13,6 +13,8 @@ from chainer.training import extensions
 
 import chainermn
 
+import inspect
+
 
 class MLP(chainer.Chain):
     def __init__(self, n_units, n_out):
@@ -28,15 +30,21 @@ class MLP(chainer.Chain):
         return self.l3(h2)
 
 
+def location(depth=0):
+    frame = inspect.stack()[depth+1]
+    return (frame[1], frame[2])
+     
 @chainer.testing.parameterize(
     {'gpu': True},
     {'gpu': False},
 )
 class TestMNIST(unittest.TestCase):
     def test_mnist(self, display_log=True):
-        epoch = 5
+        epoch = 3
         batchsize = 100
         n_units = 100
+
+        print("Debug: {}:{}".format(*location()), flush=True)
 
         if self.gpu:
             comm = chainermn.create_communicator('hierarchical')
@@ -50,23 +58,28 @@ class TestMNIST(unittest.TestCase):
         if self.gpu:
             model.to_gpu()
 
+        print("Debug: {}:{}".format(*location()), flush=True)
         optimizer = chainermn.create_multi_node_optimizer(
             chainer.optimizers.Adam(), comm)
         optimizer.setup(model)
 
+        print("Debug: {}:{}".format(*location()), flush=True)
         if comm.rank == 0:
             train, test = chainer.datasets.get_mnist()
         else:
             train, test = None, None
 
+        print("Debug: {}:{}".format(*location()), flush=True)
         train = chainermn.scatter_dataset(train, comm, shuffle=True)
         test = chainermn.scatter_dataset(test, comm, shuffle=True)
 
+        print("Debug: {}:{}".format(*location()), flush=True)
         train_iter = chainer.iterators.SerialIterator(train, batchsize)
         test_iter = chainer.iterators.SerialIterator(test, batchsize,
                                                      repeat=False,
                                                      shuffle=False)
 
+        print("Debug: {}:{}".format(*location()), flush=True)
         updater = training.StandardUpdater(
             train_iter,
             optimizer,
@@ -86,13 +99,15 @@ class TestMNIST(unittest.TestCase):
             trainer.extend(extensions.LogReport(trigger=(1, 'epoch')),
                            trigger=(1, 'epoch'))
             trainer.extend(extensions.PrintReport(['epoch',
+                                                   'iteration',
                                                    'main/loss',
                                                    'validation/main/loss',
                                                    'main/accuracy',
                                                    'validation/main/accuracy',
                                                    'elapsed_time'],
                                                   out=sys.stderr),
-                           trigger=(1, 'epoch'))
+                           trigger=(1, 'iteration'))
+        print("Debug: {}:{}".format(*location()), flush=True)
         trainer.run()
 
         err = evaluator()['validation/main/accuracy']
@@ -100,4 +115,5 @@ class TestMNIST(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    print("Debug: {}:{}".format(*location()), flush=True)
     TestMNIST().test_mnist(display_log=True)

@@ -45,7 +45,8 @@ class TestMNIST(unittest.TestCase):
         batchsize = 100
         n_units = 100
 
-        print("Debug: {}:{}".format(*location()), flush=True)
+        print("Debug: {}:{}".format(*location()))
+        sys.stdout.flush()
 
         if self.gpu:
             comm = chainermn.create_communicator('hierarchical')
@@ -59,28 +60,33 @@ class TestMNIST(unittest.TestCase):
         if self.gpu:
             model.to_gpu()
 
-        print("Debug: {}:{}".format(*location()), flush=True)
+        print("Debug: {}:{}".format(*location()))
+        sys.stdout.flush()
         optimizer = chainermn.create_multi_node_optimizer(
             chainer.optimizers.Adam(), comm)
         optimizer.setup(model)
 
-        print("Debug: {}:{}".format(*location()), flush=True)
+        print("Debug: {}:{}".format(*location()))
+        sys.stdout.flush()
         if comm.rank == 0:
             train, test = chainer.datasets.get_mnist()
         else:
             train, test = None, None
 
-        print("Debug: {}:{}".format(*location()), flush=True)
+        print("Debug: {}:{}".format(*location()))
+        sys.stdout.flush()
         train = chainermn.scatter_dataset(train, comm, shuffle=True)
         test = chainermn.scatter_dataset(test, comm, shuffle=True)
 
-        print("Debug: {}:{}".format(*location()), flush=True)
+        print("Debug: {}:{}".format(*location()))
+        sys.stdout.flush()
         train_iter = chainer.iterators.SerialIterator(train, batchsize)
         test_iter = chainer.iterators.SerialIterator(test, batchsize,
                                                      repeat=False,
                                                      shuffle=False)
 
-        print("Debug: {}:{}".format(*location()), flush=True)
+        print("Debug: {}:{}".format(*location()))
+        sys.stdout.flush()
         updater = training.StandardUpdater(
             train_iter,
             optimizer,
@@ -98,7 +104,7 @@ class TestMNIST(unittest.TestCase):
         # (Otherwise, there would just be repeated outputs.)
         if comm.rank == 0 and display_log:
             trainer.extend(extensions.LogReport(trigger=(1, 'epoch')),
-                           trigger=(1, 'epoch'))
+                           trigger=(10, 'iteration'))
             trainer.extend(extensions.PrintReport(['epoch',
                                                    'iteration',
                                                    'main/loss',
@@ -107,8 +113,9 @@ class TestMNIST(unittest.TestCase):
                                                    'validation/main/accuracy',
                                                    'elapsed_time'],
                                                   out=sys.stderr),
-                           trigger=(1, 'iteration'))
-        print("Debug: {}:{}".format(*location()), flush=True)
+                           trigger=(10, 'iteration'))
+        print("Debug: {}:{}".format(*location()))
+        sys.stdout.flush()
         trainer.run()
 
         err = evaluator()['validation/main/accuracy']
@@ -116,5 +123,6 @@ class TestMNIST(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    print("Debug: {}:{}".format(*location()), flush=True)
+    print("Debug: {}:{}".format(*location()))
+    sys.stdout.flush()
     TestMNIST().test_mnist(display_log=True)
